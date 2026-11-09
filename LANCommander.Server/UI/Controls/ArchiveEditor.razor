@@ -4,7 +4,7 @@
 @using LANCommander.Server.Data.Enums
 @using LANCommander.Server.Services.Chunks
 @inject ArchiveService ArchiveService
-@inject ChunkManifestService ChunkManifestService
+@inject ChunkManifestQueue ChunkManifestQueue
 @inject SettingsProvider<LANCommander.Server.Settings.Settings> SettingsProvider
 @inject IJSRuntime JS
 @inject ScriptService ScriptService
@@ -246,9 +246,7 @@
         try
         {
             // Shown as converting straight away; the job takes it from there
-            await ChunkManifestService.MarkPendingAsync(archive.Id);
-
-            BackgroundJob.Enqueue<BuildChunkManifestBackgroundJob>(x => x.Execute(archive.Id, CancellationToken.None));
+            await ChunkManifestQueue.QueueAsync(archive.Id);
 
             Notifications.Info("Conversion queued. The archive will be converted to chunks in the background.");
 

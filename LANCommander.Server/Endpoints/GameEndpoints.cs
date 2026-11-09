@@ -5,6 +5,7 @@ using LANCommander.SDK.Services;
 using LANCommander.Server.Data.Models;
 using LANCommander.Server.ImportExport;
 using LANCommander.Server.ImportExport.Services;
+using LANCommander.Server.Jobs.Background;
 using LANCommander.Server.Services;
 using LANCommander.Server.Services.Extensions;
 using LANCommander.Server.Services.Mappers;
@@ -710,6 +711,7 @@ public static class GameEndpoints
     internal static async Task<IResult> UploadArchiveAsync(
         [FromServices] ArchiveService archiveService,
         [FromServices] GameVersionService gameVersionService,
+        [FromServices] ChunkManifestQueue chunkManifestQueue,
         [FromServices] ILogger<Game> logger,
         SDK.Models.UploadArchiveRequest request)
     {
@@ -725,6 +727,8 @@ public static class GameEndpoints
             await gameVersionService.LinkArchiveAsync(archive.Id, targetVersionId, request.Changelog);
 
             await archiveService.PublishUploadedAsync(archive.Id);
+
+            await chunkManifestQueue.QueueIfEnabledAsync(archive.Id);
 
             return TypedResults.Ok();
         }

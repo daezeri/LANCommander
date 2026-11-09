@@ -262,6 +262,7 @@ public class VersionLinkingTests(ApplicationFixture fixture) : DalTest(fixture)
         => await GameEndpoints.UploadArchiveAsync(
             GetService<ArchiveService>(),
             GetService<GameVersionService>(),
+            GetService<LANCommander.Server.Jobs.Background.ChunkManifestQueue>(),
             NullLogger<Game>.Instance,
             new SDK.Models.UploadArchiveRequest
             {

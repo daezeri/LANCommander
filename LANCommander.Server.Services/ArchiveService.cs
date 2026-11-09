@@ -1,4 +1,5 @@
 using LANCommander.Server.Data;
+using LANCommander.Server.Data.Enums;
 using LANCommander.Server.Data.Models;
 using LANCommander.Helpers;
 using System.IO.Compression;
@@ -195,6 +196,8 @@ namespace LANCommander.Server.Services
             await cache.ExpireGameCacheAsync(archive.GameId);
             await cache.ExpireArchiveCacheAsync(archive.Id);
 
+            await RemoveChunkLinksAsync(archive.Id);
+
             await base.DeleteAsync(archive);
         }
 
@@ -207,7 +210,49 @@ namespace LANCommander.Server.Services
 
             await cache.ExpireGameCacheAsync(archive.GameId);
 
+            await RemoveChunkLinksAsync(archive.Id);
+
             await base.DeleteAsync(archive);
+        }
+
+        /// <summary>
+        /// Drops a deleted archive's links to its chunks. The database cascades this too, but removing
+        /// them here doesn't depend on it. The chunks stay in the store until the cleanup job finds
+        /// that no archive links to them.
+        /// </summary>
+        private async Task RemoveChunkLinksAsync(Guid archiveId)
+        {
+            await using var context = await dbContextFactory.CreateDbContextAsync();
+
+            var links = await context.Set<ArchiveChunk>().Where(ac => ac.ArchiveId == archiveId).ToListAsync();
+
+            if (links.Count == 0)
+                return;
+
+            context.Set<ArchiveChunk>().RemoveRange(links);
+
+            await context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Marks a converted archive's manifest out of date after its zip changed, so it's rebuilt and
+        /// stops being served. An archive that was never converted stays that way.
+        /// </summary>
+        public async Task MarkManifestStaleAsync(Guid archiveId)
+        {
+            await using var context = await dbContextFactory.CreateDbContextAsync();
+
+            var archive = await context.Set<Archive>().FirstOrDefaultAsync(a => a.Id == archiveId);
+
+            if (archive == null || archive.ManifestStatus == ChunkManifestStatus.None)
+                return;
+
+            archive.ManifestStatus = ChunkManifestStatus.Stale;
+            archive.ManifestError = null;
+
+            await context.SaveChangesAsync();
+
+            await cache.ExpireArchiveCacheAsync(archiveId);
         }
 
         public async Task<SDK.Models.Manifest.Game> ReadManifestAsync(string objectKey)
@@ -425,6 +470,8 @@ namespace LANCommander.Server.Services
             }
 
             await RecalculateFileSizeArchiveAsync(archive);
+
+            await MarkManifestStaleAsync(archiveId);
         }
 
         public async Task<long> GetCompressedSizeAsync(Archive archive)
@@ -569,6 +616,10 @@ namespace LANCommander.Server.Services
 
             await UpdateAsync(alteredArchive);
             await UpdateAsync(originalArchive);
+
+            // Both zips were rewritten
+            await MarkManifestStaleAsync(originalArchive.Id);
+            await MarkManifestStaleAsync(alteredArchive.Id);
 
             _logger?.LogInformation("Finished merging original archive {ArchiveId} and rebuilt patch archive {PatchArchivePath}", originalArchive.Id.ToString(), alteredZipPath);
         }

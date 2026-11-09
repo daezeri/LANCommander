@@ -2,6 +2,7 @@ using LANCommander.Server.Data.Models;
 using LANCommander.Server.Extensions;
 using LANCommander.Server.ImportExport;
 using LANCommander.Server.ImportExport.Services;
+using LANCommander.Server.Jobs.Background;
 using LANCommander.Server.Services;
 using LANCommander.Server.Services.Mappers;
 using Microsoft.AspNetCore.Mvc;
@@ -141,6 +142,7 @@ public static class ToolsEndpoints
     internal static async Task<IResult> UploadArchiveAsync(
         SDK.Models.UploadArchiveRequest request,
         [FromServices] ArchiveService archiveService,
+        [FromServices] ChunkManifestQueue chunkManifestQueue,
         [FromServices] ILoggerFactory loggerFactory)
     {
         var logger = loggerFactory.CreateLogger("ToolsApi");
@@ -155,6 +157,8 @@ public static class ToolsEndpoints
                 a => a.ToolId == request.Id && a.Version == request.Version);
 
             await archiveService.PublishUploadedAsync(archive.Id);
+
+            await chunkManifestQueue.QueueIfEnabledAsync(archive.Id);
 
             return TypedResults.Ok();
         }
