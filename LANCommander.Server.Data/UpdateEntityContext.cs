@@ -18,6 +18,18 @@ public class UpdateEntityContext<TEntity>
         _updatedEntity = updatedEntity;
     }
 
+    /// <summary>
+    /// Keeps the stored value of a property this update must not change, whatever the updated entity
+    /// holds: one that other code owns, and that an entity loaded earlier may hold an old value of.
+    /// </summary>
+    public void KeepStoredValue<TProperty>(Expression<Func<TEntity, TProperty>> property)
+    {
+        var entry = _context.Entry(_entity).Property(property);
+
+        entry.CurrentValue = entry.OriginalValue;
+        entry.IsModified = false;
+    }
+
     public async Task UpdateRelationshipAsync<TRelatedEntity>(
         Expression<Func<TEntity, TRelatedEntity?>> navigationPropertyPath)
         where TRelatedEntity : class, IBaseModel

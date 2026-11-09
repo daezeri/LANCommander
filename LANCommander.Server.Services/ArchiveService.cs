@@ -178,6 +178,13 @@ namespace LANCommander.Server.Services
                 await context.UpdateRelationshipAsync(a => a.Redistributable);
                 await context.UpdateRelationshipAsync(a => a.Tool);
                 await context.UpdateRelationshipAsync(a => a.StorageLocation);
+
+                // Only the chunk manifest service sets these. An archive loaded before a conversion
+                // finished, then saved for its version or sizes, would otherwise put the old values back.
+                context.KeepStoredValue(a => a.ManifestStatus);
+                context.KeepStoredValue(a => a.ManifestHash);
+                context.KeepStoredValue(a => a.ManifestError);
+                context.KeepStoredValue(a => a.ManifestBuiltOn);
             });
         }
         
