@@ -72,15 +72,21 @@ player on "Server only" can still share.
     {
       "path": "maps/de_dust.bsp",
       "size": 9437184,
-      "crc32": "A1B2C3D4",
-      "modified": "2004-06-01T12:00:00Z",
+      "crc32": 2712847316,
+      "modified": "2004-06-01T12:00:00+00:00",
       "chunks": ["9f86d0…", "60303a…", "fd61a0…"]
     }
   ]
 }
 ```
 
-- `crc32` is kept so the existing `ValidateFilesAsync` and repair code keep working.
+- `crc32` (an unsigned 32-bit number) is kept so the existing `ValidateFilesAsync` and repair code keep
+  working.
+- The SDK code lives in `LANCommander.SDK/Chunking`:
+  - `ChunkManifestBuilder` cuts files into chunks.
+  - `ZipChunker` converts a whole zip.
+  - `ChunkManifestSerializer` writes the exact bytes whose hash names the manifest.
+  - `ChunkPath` rejects unsafe paths.
 - The manifest is itself stored in the chunk store under its own hash, and the archive points to that hash.
 
 ### Server chunk store
