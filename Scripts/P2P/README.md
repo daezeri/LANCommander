@@ -11,6 +11,22 @@ The design is in [docs/p2p/README.md](../../docs/p2p/README.md).
 
 The scripts run on Windows PowerShell 5.1 and PowerShell 7.
 
+### "Running scripts is disabled on this system"
+
+Windows blocks `.ps1` files until its execution policy allows them. To bypass the policy for one run,
+without changing any setting, start the script through `powershell`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Scripts\P2P\Start-TestServer.ps1 -Reset
+```
+
+The same works for the other scripts. To run `.\script.ps1` directly from then on, allow local scripts for
+your own account. `RemoteSigned` still blocks unsigned scripts downloaded from the internet:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
 ## Prerequisites
 
 - .NET 10 SDK and Node.js
