@@ -20,13 +20,6 @@ without changing any setting, start the script through `powershell`:
 powershell -ExecutionPolicy Bypass -File .\Scripts\P2P\Start-TestServer.ps1 -Reset
 ```
 
-The same works for the other scripts. To run `.\script.ps1` directly from then on, allow local scripts for
-your own account. `RemoteSigned` still blocks unsigned scripts downloaded from the internet:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
-
 ## Prerequisites
 
 - .NET 10 SDK and Node.js
