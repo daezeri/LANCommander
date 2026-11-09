@@ -1,5 +1,6 @@
 @page "/Settings/Archives"
 @using LANCommander.Server.Settings
+@using LANCommander.Server.Settings.Enums
 @using Microsoft.Extensions.Options
 @inject StorageLocationService StorageLocationService
 @inject IOptions<Settings> Settings
@@ -19,6 +20,10 @@
 
             <FormItem Label="Generate Chunk Manifests" Help="Lets archives be converted to chunks, the groundwork for LAN peer-to-peer downloads. Archives are kept and still downloaded as before. Chunks are stored in the Chunks folder of the data directory.">
                 <Switch @bind-Value="Settings.Value.Server.Archives.GenerateChunkManifests" />
+            </FormItem>
+
+            <FormItem Label="Download Format" Help="Whether launchers may download converted archives as chunks. Zips are always still served, so older launchers and games that haven't been converted keep working.">
+                <EnumSelect TEnum="ChunkDownloadFormat" @bind-Value="Settings.Value.Server.Archives.DownloadFormat" />
             </FormItem>
 
             <FormItem Label="Max Upload Chunk Size (MB)">

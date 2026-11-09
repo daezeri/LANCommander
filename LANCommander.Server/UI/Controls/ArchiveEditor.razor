@@ -6,6 +6,7 @@
 @inject ArchiveService ArchiveService
 @inject ChunkManifestService ChunkManifestService
 @inject SettingsProvider<LANCommander.Server.Settings.Settings> SettingsProvider
+@inject IJSRuntime JS
 @inject ScriptService ScriptService
 @inject GameService GameService
 @inject ToolService ToolService
@@ -54,6 +55,9 @@
                         break;
                     case ChunkManifestStatus.Ready:
                         <Tag Small Success title="@($"Manifest {context.ManifestHash}, built {context.ManifestBuiltOn:u}")">Ready @(context.ManifestHash?[..12])</Tag>
+                        <Tooltip Title="Copy Manifest Hash">
+                            <Button Text Small Icon="IconType.Copy" aria-label="Copy manifest hash" OnClick="() => CopyManifestHashAsync(context)" />
+                        </Tooltip>
                         break;
                     case ChunkManifestStatus.Stale:
                         <Tag Small Warning>Out of date</Tag>
@@ -253,6 +257,21 @@
         catch (Exception ex)
         {
             Notifications.Error(ex, "The conversion could not be queued.");
+        }
+    }
+
+    async Task CopyManifestHashAsync(Archive archive)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", archive.ManifestHash);
+
+            Notifications.Success("Manifest hash copied.");
+        }
+        catch (JSException)
+        {
+            // Browsers only expose the clipboard on secure origins; plain-HTTP LAN servers aren't one
+            Notifications.Info($"Manifest hash: {archive.ManifestHash}");
         }
     }
 

@@ -8,6 +8,7 @@ The design is in [docs/p2p/README.md](../../docs/p2p/README.md).
 | `Start-TestServer.ps1` | Runs the server from source with its own data folder (`Data\P2PTest`, ignored by git) |
 | `New-TestArchive.ps1` | Makes a test game zip covering every conversion case, in two versions |
 | `Test-ChunkManifest.ps1` | Rebuilds every file of a zip from the chunk store and checks it matches exactly |
+| `Test-ChunkEndpoints.ps1` | Does the same over HTTP: signs in, then downloads the manifest and every chunk from the server, as a launcher will |
 
 The scripts run on Windows PowerShell 5.1 and PowerShell 7.
 
@@ -64,6 +65,20 @@ powershell -ExecutionPolicy Bypass -File .\Scripts\P2P\Start-TestServer.ps1 -Res
    shared: only `game.exe` and the added `patch-notes.txt` differ between the versions.
 
    Add `-OutputPath .\Data\P2PTest\rebuilt` to also write out the rebuilt files.
+
+7. **Check the downloads over HTTP:** in **Settings → Archives**, set **Download Format** to **Chunks
+   available** and save. Copy an archive's full manifest hash with the copy button beside *Ready*, then:
+
+   ```powershell
+   .\Scripts\P2P\Test-ChunkEndpoints.ps1 -ArchivePath .\Data\P2PTest\game-v1.zip -ManifestHash <full v1 hash>
+   ```
+
+   It asks for the account you signed up with, and should end with **The server serves this archive
+   correctly as chunks**. It also shows how much was transferred: less than the file data, because
+   compressed chunks are sent compressed and shared chunks are downloaded once.
+
+   Set the format back to **Archives only** and run it again: it should stop at once, saying the
+   server offers archives only.
 
 ## What to look for
 

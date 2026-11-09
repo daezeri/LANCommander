@@ -24,6 +24,7 @@ public static class Endpoints
             endpoints.MapGameEndpoints();
             endpoints.MapDepotEndpoints();
             endpoints.MapArchivesEndpoints();
+            endpoints.MapChunkEndpoints();
             endpoints.MapUploadEndpoints();
             endpoints.MapProfileEndpoints();
             endpoints.MapPlaySessionsEndpoints();

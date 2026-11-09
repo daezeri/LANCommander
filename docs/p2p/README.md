@@ -187,7 +187,7 @@ Each PR merges on its own and changes nothing for users until the feature is swi
 | 2 | `p2p/02-chunk-store` | `StorageLocationType.Chunk` and the chunk store service, tests |
 | 3 | `p2p/03-schema` | Archive manifest status (`None`/`Pending`/`Ready`/`Stale`/`Failed`) and manifest hash, plus `Chunk` and `ArchiveChunk` tables. Migrations for SQLite, MySQL and PostgreSQL. Nothing writes to them yet. |
 | 4 | `p2p/04-build-manifests` | Manifest service, Hangfire job, the "Generate chunk manifests" setting (off), and a "Rebuild manifest" button on the archive editor |
-| 7 | `p2p/07-endpoints` | `GET /api/Archives/{id}/ChunkManifest`, `GET /api/Chunks/{sha256}` (sign-in, `DownloadThrottle`, cache headers marking chunks as never changing), the download format setting, the capability flag, and SDK client methods |
+| 7 | `p2p/07-endpoints` | `GET /api/Archives/{id}/ChunkManifest`, `GET /api/Chunks/{sha256}` (sign-in, `DownloadThrottle`, cache headers marking chunks as never changing), `GET /api/Chunks/Capabilities`, and the download format setting. The SDK's shared routes and headers are in `ChunkHttp`; the client that uses them is step 2's PR 9. |
 | 5 | `p2p/05-auto-triggers` | Build after upload. Mark `Stale` after repack and patch. Remove the manifest when an archive is deleted. |
 | 6 | `p2p/06-sweep` | Recurring sweep that converts existing archives: throttled, with a progress view, a "Build all now" button, and a disk space estimate |
 | 8 | `p2p/08-chunk-cleanup` | Delete chunks no archive links to, and leftover chunk files |
