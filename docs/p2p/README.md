@@ -1,6 +1,6 @@
 # LAN Peer-to-Peer Downloads: Design
 
-Status: **proposed design**. Step 1 (the server side) is implemented in branches `p2p/01` to `p2p/08`. Branch stack: `p2p/00-design` (this document) → `p2p/01-…` and up.
+Status: **proposed design**. Step 1 (the server side) is implemented in branches `feature/p2p-01-…` to `feature/p2p-08-…`. Branch stack: `feature/p2p-00-design` (this document) → `feature/p2p-01-…` and up.
 
 Open items for later are in [TODO.md](TODO.md).
 
@@ -183,19 +183,24 @@ Each PR merges on its own and changes nothing for users until the feature is swi
 
 | # | Branch | Contents |
 |---|---|---|
-| 1 | `p2p/01-manifest-format` | SDK manifest models and chunker (shared with the launcher later), unit tests |
-| 2 | `p2p/02-chunk-store` | `StorageLocationType.Chunk` and the chunk store service, tests |
-| 3 | `p2p/03-schema` | Archive manifest status (`None`/`Pending`/`Ready`/`Stale`/`Failed`) and manifest hash, plus `Chunk` and `ArchiveChunk` tables. Migrations for SQLite, MySQL and PostgreSQL. Nothing writes to them yet. |
-| 4 | `p2p/04-build-manifests` | Manifest service, Hangfire job, the "Generate chunk manifests" setting (off), and a "Rebuild manifest" button on the archive editor |
-| 7 | `p2p/07-endpoints` | `GET /api/Archives/{id}/ChunkManifest`, `GET /api/Chunks/{sha256}` (sign-in, `DownloadThrottle`, cache headers marking chunks as never changing), `GET /api/Chunks/Capabilities`, and the download format setting. The SDK's shared routes and headers are in `ChunkHttp`; the client that uses them is step 2's PR 9. |
-| 5 | `p2p/05-auto-triggers` | Build after upload. Mark `Stale` after repack and patch. Remove the manifest when an archive is deleted. |
-| 6 | `p2p/06-sweep` | Recurring sweep that converts existing archives: throttled, with a progress view, a "Build all now" button, and a disk space estimate |
-| 8 | `p2p/08-chunk-cleanup` | Delete chunks no archive links to, and leftover chunk files |
+| 1 | `feature/p2p-01-manifest-format` | SDK manifest models and chunker (shared with the launcher later), unit tests |
+| 2 | `feature/p2p-02-chunk-store` | `StorageLocationType.Chunk` and the chunk store service, tests |
+| 3 | `feature/p2p-03-schema` | Archive manifest status (`None`/`Pending`/`Ready`/`Stale`/`Failed`) and manifest hash, plus `Chunk` and `ArchiveChunk` tables. Migrations for SQLite, MySQL and PostgreSQL. Nothing writes to them yet. |
+| 4 | `feature/p2p-04-build-manifests` | Manifest service, Hangfire job, the "Generate chunk manifests" setting (off), and a "Rebuild manifest" button on the archive editor |
+| 7 | `feature/p2p-07-endpoints` | `GET /api/Archives/{id}/ChunkManifest`, `GET /api/Chunks/{sha256}` (sign-in, `DownloadThrottle`, cache headers marking chunks as never changing), `GET /api/Chunks/Capabilities`, and the download format setting. The SDK's shared routes and headers are in `ChunkHttp`; the client that uses them is step 2's PR 9. |
+| 5 | `feature/p2p-05-auto-triggers` | Build after upload. Mark `Stale` after repack and patch. Remove the manifest when an archive is deleted. |
+| 6 | `feature/p2p-06-sweep` | Recurring sweep that converts existing archives: throttled, with a progress view, a "Build all now" button, and a disk space estimate |
+| 8 | `feature/p2p-08-chunk-cleanup` | Delete chunks no archive links to, and leftover chunk files |
 
 **Stack order** (each branch starts from the previous one, so the newest branch always holds everything built
 so far): `main` → 00 → 01 → 02 → 03 → 04 → 07 → 05 → 06 → 08. PR 7 comes early so end-to-end testing can
-start sooner. Branch names use a `p2p/` prefix, so there must never be a branch named just `p2p`, because git
-can't have both.
+start sooner. Branch names follow the project's `feature/` style, numbered so the order stays clear:
+`feature/p2p-NN-name`.
+
+**Submitting upstream:** a pull request to LANCommander can only target a branch that exists there, so
+stacked branches go in one at a time. PR 01 targets `main`; once it's merged, the next one is rebased onto
+`main` and opened, and so on. If the maintainers prefer, an upstream `feature/p2p` branch can collect them
+instead.
 
 **Where archives are created or changed** (manifests must follow these):
 - **Upload completion:** `ArchiveService.CompleteUploadAsync`, from the Games, Redistributables and Tools
