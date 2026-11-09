@@ -1,6 +1,6 @@
 # LAN Peer-to-Peer Downloads: Design
 
-Status: **proposed design, not started**. Branch stack: `p2p/00-design` (this document) → `p2p/01-…` and up.
+Status: **proposed design**. Step 1 (the server side) is implemented in branches `p2p/01` to `p2p/08`. Branch stack: `p2p/00-design` (this document) → `p2p/01-…` and up.
 
 Open items for later are in [TODO.md](TODO.md).
 

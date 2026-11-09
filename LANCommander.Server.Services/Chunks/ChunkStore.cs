@@ -13,6 +13,12 @@ namespace LANCommander.Server.Services.Chunks;
 /// <param name="Compression">How the file's bytes are stored.</param>
 public sealed record StoredChunk(string Hash, string Path, long StoredSize, ChunkCompression Compression);
 
+/// <summary>A file in the chunk store.</summary>
+/// <param name="Path">Where it is.</param>
+/// <param name="Hash">The chunk it's named for, or null for a file named for none (a temporary file).</param>
+/// <param name="LastWriteTimeUtc">When it was last written.</param>
+public sealed record StoreFile(string Path, string? Hash, DateTime LastWriteTimeUtc);
+
 /// <summary>
 /// The server's store of chunks: one file per chunk, named by its hash, under the default
 /// <see cref="StorageLocationType.Chunk"/> storage location. Chunks are spread over two levels of
@@ -66,6 +72,26 @@ public sealed class ChunkStore(StorageLocationService storageLocationService, IL
         var name = compression == ChunkCompression.None ? hash : hash + CompressedExtension;
 
         return AppPaths.ResolveStorageLocationPath(storageLocation.Path, hash[..2], hash[2..4], name);
+    }
+
+    /// <summary>
+    /// Every file in the store, with the hash it's named for, or null for a file named for no chunk,
+    /// such as a temporary file a crash left behind.
+    /// </summary>
+    public async Task<IEnumerable<StoreFile>> EnumerateFilesAsync()
+    {
+        var root = AppPaths.ResolveStorageLocationPath((await GetStorageLocationAsync()).Path);
+
+        if (!Directory.Exists(root))
+            return [];
+
+        return Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).Select(path =>
+        {
+            var name = System.IO.Path.GetFileName(path);
+            var hash = name.EndsWith(CompressedExtension, StringComparison.Ordinal) ? name[..^CompressedExtension.Length] : name;
+
+            return new StoreFile(path, ChunkHash.IsValid(hash) ? hash : null, File.GetLastWriteTimeUtc(path));
+        });
     }
 
     /// <summary>The stored chunk, or null if the store doesn't have it.</summary>

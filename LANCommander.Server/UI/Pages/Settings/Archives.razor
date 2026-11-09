@@ -64,6 +64,7 @@
 
                         <Flex Gap="Gap.Small">
                             <Button Icon="IconType.SquaresFour" Disabled="_progress.Remaining == 0" OnClick="BuildAllNow">Build All Now</Button>
+                            <Button Icon="IconType.Broom" OnClick="CleanUpNow">Clean Up Store</Button>
                             <Button Text Icon="IconType.ArrowsClockwise" OnClick="LoadProgressAsync">Refresh</Button>
                         </Flex>
                     </Flex>
@@ -151,6 +152,13 @@
         BackgroundJob.Enqueue<ChunkManifestSweep>(sweep => sweep.ConvertAsync(int.MaxValue));
 
         Notifications.Info("Converting every archive that's waiting, one at a time, in the background. Refresh to follow its progress.");
+    }
+
+    void CleanUpNow()
+    {
+        BackgroundJob.Enqueue<ChunkStoreCleanup>(cleanup => cleanup.CleanUpNowAsync());
+
+        Notifications.Info("Removing chunks no archive uses any more, in the background. This also runs by itself every night.");
     }
 
     async Task SaveAsync()

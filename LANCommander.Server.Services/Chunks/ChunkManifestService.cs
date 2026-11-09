@@ -18,6 +18,7 @@ namespace LANCommander.Server.Services.Chunks;
 public sealed class ChunkManifestService(
     ArchiveService archiveService,
     ChunkStore chunkStore,
+    ChunkStoreGate gate,
     IDbContextFactory<DatabaseContext> contextFactory,
     IFusionCache cache,
     ILogger<ChunkManifestService> logger)
@@ -43,6 +44,10 @@ public sealed class ChunkManifestService(
             throw new KeyNotFoundException($"Archive {archiveId} doesn't exist");
 
         await SetStatusAsync(archiveId, ChunkManifestStatus.Pending, error: null);
+
+        // From the first chunk written to the last link recorded, so cleanup can't remove a chunk
+        // this conversion found already stored and is about to link
+        using var conversion = await gate.EnterConversionAsync(cancellationToken);
 
         var path = await archiveService.GetArchiveFileLocationAsync(archive);
 

@@ -90,6 +90,11 @@ setting, imports) is picked up by a sweep every 10 minutes, a few at a time.
 much space the rest could take against what's free, and a **Build All Now** button that converts
 everything waiting one archive at a time. Use **Refresh** to follow it.
 
+Chunks no archive uses any more (after archives are deleted or rebuilt) are removed every night at 4:00
+once they are a day old. **Clean Up Store** does it straight away. To see it work: convert `game-v1.zip`,
+delete that archive, click **Clean Up Store**, and the chunks only it used disappear from
+`Data\P2PTest\Chunks`, while chunks it shared with `game-v2.zip` stay.
+
 ## What to look for
 
 - `data\level.pak` and `data\copy-of-level.pak` are identical, so their chunks are stored once.
