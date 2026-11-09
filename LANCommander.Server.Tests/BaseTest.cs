@@ -117,6 +117,26 @@ public abstract class BaseTest : IClassFixture<ApplicationFixture>, IDisposable
         return tempPath;
     }
 
+    /// <summary>
+    /// The default chunk storage location, pointed at one temporary folder for the whole run (the
+    /// in-memory database is shared, so the first caller's location is everyone's). Returns its path.
+    /// </summary>
+    protected async Task<string> EnsureChunkStorageLocationAsync()
+    {
+        var storageLocationService = GetService<StorageLocationService>();
+
+        var result = await storageLocationService.AddMissingAsync(
+            l => l.Type == StorageLocationType.Chunk && l.Default,
+            new StorageLocation
+            {
+                Path = Path.Combine(Path.GetTempPath(), $"lc-chunk-store-tests-{Guid.NewGuid():N}"),
+                Type = StorageLocationType.Chunk,
+                Default = true,
+            });
+
+        return result.Value.Path;
+    }
+
     protected string GetTemporaryDirectory()
     {
         var tempPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());

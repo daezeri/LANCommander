@@ -12,6 +12,7 @@ namespace LANCommander.SDK.Enums
         Save,
         Media,
         IssueAttachment,
-        MatchAttachment
+        MatchAttachment,
+        Chunk
     }
 }
