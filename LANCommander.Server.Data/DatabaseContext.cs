@@ -348,6 +348,25 @@ namespace LANCommander.Server.Data
             builder.Entity<Archive>()
                 .Navigation(a => a.StorageLocation)
                 .AutoInclude();
+
+            builder.Entity<ArchiveChunk>()
+                .HasKey(ac => new { ac.ArchiveId, ac.ChunkHash });
+
+            // An archive's links go with it; a chunk stays until no archive links to it
+            builder.Entity<Archive>()
+                .HasMany(a => a.Chunks)
+                .WithOne(ac => ac.Archive)
+                .HasForeignKey(ac => ac.ArchiveId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Chunk>()
+                .HasMany(c => c.Archives)
+                .WithOne(ac => ac.Chunk)
+                .HasForeignKey(ac => ac.ChunkHash)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Archive>()
+                .HasIndex(a => a.ManifestStatus);
             #endregion
 
             #region Game Save Relationships
@@ -769,5 +788,7 @@ namespace LANCommander.Server.Data
         public DbSet<MatchStatistic>? MatchStatistics { get; set; }
         public DbSet<MatchAttachment>? MatchAttachments { get; set; }
         public DbSet<PlayerIdentity>? PlayerIdentities { get; set; }
+        public DbSet<Chunk>? Chunks { get; set; }
+        public DbSet<ArchiveChunk>? ArchiveChunks { get; set; }
     }
 }

@@ -271,6 +271,19 @@ namespace LANCommander.Server.Data.MySQL.Migrations
                     b.Property<Guid?>("LastVersionId")
                         .HasColumnType("char(36)");
 
+                    b.Property<DateTime?>("ManifestBuiltOn")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ManifestError")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ManifestHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("ManifestStatus")
+                        .HasColumnType("int");
+
                     b.Property<string>("ObjectKey")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -308,6 +321,8 @@ namespace LANCommander.Server.Data.MySQL.Migrations
 
                     b.HasIndex("LastVersionId");
 
+                    b.HasIndex("ManifestStatus");
+
                     b.HasIndex("RedistributableId");
 
                     b.HasIndex("StorageLocationId");
@@ -317,6 +332,22 @@ namespace LANCommander.Server.Data.MySQL.Migrations
                     b.HasIndex("UpdatedById");
 
                     b.ToTable("Archive");
+                });
+
+            modelBuilder.Entity("LANCommander.Server.Data.Models.ArchiveChunk", b =>
+                {
+                    b.Property<Guid>("ArchiveId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("ChunkHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("ArchiveId", "ChunkHash");
+
+                    b.HasIndex("ChunkHash");
+
+                    b.ToTable("ArchiveChunks");
                 });
 
             modelBuilder.Entity("LANCommander.Server.Data.Models.Category", b =>
@@ -441,6 +472,29 @@ namespace LANCommander.Server.Data.MySQL.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("ChatThreadReadStatuses");
+                });
+
+            modelBuilder.Entity("LANCommander.Server.Data.Models.Chunk", b =>
+                {
+                    b.Property<string>("Hash")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("Compression")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("StoredSize")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Hash");
+
+                    b.ToTable("Chunks");
                 });
 
             modelBuilder.Entity("LANCommander.Server.Data.Models.Collection", b =>
@@ -2980,6 +3034,25 @@ namespace LANCommander.Server.Data.MySQL.Migrations
                     b.Navigation("UpdatedBy");
                 });
 
+            modelBuilder.Entity("LANCommander.Server.Data.Models.ArchiveChunk", b =>
+                {
+                    b.HasOne("LANCommander.Server.Data.Models.Archive", "Archive")
+                        .WithMany("Chunks")
+                        .HasForeignKey("ArchiveId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LANCommander.Server.Data.Models.Chunk", "Chunk")
+                        .WithMany("Archives")
+                        .HasForeignKey("ChunkHash")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Archive");
+
+                    b.Navigation("Chunk");
+                });
+
             modelBuilder.Entity("LANCommander.Server.Data.Models.Category", b =>
                 {
                     b.HasOne("LANCommander.Server.Data.Models.User", "CreatedBy")
@@ -4270,6 +4343,11 @@ namespace LANCommander.Server.Data.MySQL.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("LANCommander.Server.Data.Models.Archive", b =>
+                {
+                    b.Navigation("Chunks");
+                });
+
             modelBuilder.Entity("LANCommander.Server.Data.Models.Category", b =>
                 {
                     b.Navigation("Children");
@@ -4278,6 +4356,11 @@ namespace LANCommander.Server.Data.MySQL.Migrations
             modelBuilder.Entity("LANCommander.Server.Data.Models.ChatThread", b =>
                 {
                     b.Navigation("Messages");
+                });
+
+            modelBuilder.Entity("LANCommander.Server.Data.Models.Chunk", b =>
+                {
+                    b.Navigation("Archives");
                 });
 
             modelBuilder.Entity("LANCommander.Server.Data.Models.Engine", b =>
