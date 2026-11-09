@@ -32,6 +32,7 @@ public static class IServiceCollectionExtensions
         services.AddScoped<IArchiveClient, ArchiveService>();
         services.AddScoped<StorageLocationService>();
         services.AddScoped<Chunks.ChunkStore>();
+        services.AddScoped<Chunks.ChunkManifestService>();
         services.AddScoped<ActionService>();
         services.AddScoped<CategoryService>();
         services.AddScoped<CollectionService>();

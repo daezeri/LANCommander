@@ -208,6 +208,8 @@ can't have both.
 
 The PR 6 sweep catches every path. PR 5 makes the common ones immediate and correct.
 
-**Local testing:** run the server through the .NET Aspire `AppHost` against SQLite.
-- From PR 4: upload a game and rebuild its manifest.
-- From PR 7: request a manifest and its chunks, and check that they reassemble into the original files.
+**Local testing:** see [Scripts/P2P/README.md](../../Scripts/P2P/README.md).
+- From PR 4: run the server with its own data folder, convert test archives from the admin UI, and check with
+  `Test-ChunkManifest.ps1` that the chunk store rebuilds every file exactly.
+- From PR 7: request a manifest and its chunks over HTTP, and check that they reassemble into the original
+  files.

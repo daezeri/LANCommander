@@ -1,7 +1,11 @@
 @using Hangfire
 @using LANCommander.Server.Jobs.Background
 @using LANCommander.Server.Models
+@using LANCommander.Server.Data.Enums
+@using LANCommander.Server.Services.Chunks
 @inject ArchiveService ArchiveService
+@inject ChunkManifestService ChunkManifestService
+@inject SettingsProvider<LANCommander.Server.Settings.Settings> SettingsProvider
 @inject ScriptService ScriptService
 @inject GameService GameService
 @inject ToolService ToolService
@@ -40,8 +44,38 @@
         <BoundColumn Property="a => a.CreatedOn" Title="Created On" Sortable DefaultSort="ColumnSort.Descending">
             <LocalTime Value="context.CreatedOn" />
         </BoundColumn>
+        @if (_chunkManifestsEnabled)
+        {
+            <BoundColumn Property="a => a.ManifestStatus" Title="Chunks" Sortable>
+                @switch (context.ManifestStatus)
+                {
+                    case ChunkManifestStatus.Pending:
+                        <Tag Small Info>Converting</Tag>
+                        break;
+                    case ChunkManifestStatus.Ready:
+                        <Tag Small Success title="@($"Manifest {context.ManifestHash}, built {context.ManifestBuiltOn:u}")">Ready @(context.ManifestHash?[..12])</Tag>
+                        break;
+                    case ChunkManifestStatus.Stale:
+                        <Tag Small Warning>Out of date</Tag>
+                        break;
+                    case ChunkManifestStatus.Failed:
+                        <Tag Small Danger title="@context.ManifestError">Failed</Tag>
+                        break;
+                    default:
+                        <Tag Small>Not converted</Tag>
+                        break;
+                }
+            </BoundColumn>
+        }
 
-        <ActionsColumn TItem="Archive" Width="230px">
+        <ActionsColumn TItem="Archive" Width="270px">
+            @if (_chunkManifestsEnabled)
+            {
+                <Tooltip Title="Build Chunk Manifest">
+                    <Button Text Icon="IconType.SquaresFour" aria-label="Build chunk manifest" Disabled="context.ManifestStatus == ChunkManifestStatus.Pending" OnClick="() => BuildChunkManifestAsync(context)" />
+                </Tooltip>
+            }
+
             <Tooltip Title="Recalculate File Size">
                 <Button Text Icon="IconType.ArrowsClockwise" aria-label="Recalculate file size" OnClick="() => RecalculateFileSizeAsync(context)" />
             </Tooltip>
@@ -78,9 +112,12 @@
     bool _recalculating;
     Guid? _checking;
     bool _hasPackageScript;
+    bool _chunkManifestsEnabled;
 
     protected override async Task OnInitializedAsync()
     {
+        _chunkManifestsEnabled = SettingsProvider.CurrentValue.Server.Archives.GenerateChunkManifests;
+
         if (GameId != Guid.Empty)
             _hasPackageScript = await ScriptService.ExistsAsync(s => s.GameId == GameId && s.Type == SDK.Enums.ScriptType.Package);
         else if (RedistributableId != Guid.Empty)
@@ -197,6 +234,25 @@
         finally
         {
             _checking = null;
+        }
+    }
+
+    async Task BuildChunkManifestAsync(Archive archive)
+    {
+        try
+        {
+            // Shown as converting straight away; the job takes it from there
+            await ChunkManifestService.MarkPendingAsync(archive.Id);
+
+            BackgroundJob.Enqueue<BuildChunkManifestBackgroundJob>(x => x.Execute(archive.Id, CancellationToken.None));
+
+            Notifications.Info("Conversion queued. The archive will be converted to chunks in the background.");
+
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            Notifications.Error(ex, "The conversion could not be queued.");
         }
     }
 

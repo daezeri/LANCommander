@@ -17,6 +17,10 @@
                 <Switch @bind-Value="Settings.Value.Server.Archives.AllowInsecureDownloads" />
             </FormItem>
 
+            <FormItem Label="Generate Chunk Manifests" Help="Lets archives be converted to chunks, the groundwork for LAN peer-to-peer downloads. Archives are kept and still downloaded as before. Chunks are stored in the Chunks folder of the data directory.">
+                <Switch @bind-Value="Settings.Value.Server.Archives.GenerateChunkManifests" />
+            </FormItem>
+
             <FormItem Label="Max Upload Chunk Size (MB)">
                 <NumberInput @bind-Value="Settings.Value.Server.Archives.MaxChunkSize" Min="1" />
             </FormItem>
