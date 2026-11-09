@@ -100,6 +100,68 @@ public sealed class ChunkManifestService(
         return ChunkManifestStatus.Ready;
     }
 
+    /// <summary>
+    /// The archives waiting for conversion, oldest first: never converted, or out of date since their
+    /// zip changed. Failed archives are left alone; an administrator rebuilds them once the cause is fixed.
+    /// </summary>
+    public async Task<IReadOnlyList<Guid>> GetArchivesToConvertAsync(int limit, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        return await context.Set<Archive>()
+            .Where(a => a.ManifestStatus == ChunkManifestStatus.None || a.ManifestStatus == ChunkManifestStatus.Stale)
+            .OrderBy(a => a.CreatedOn)
+            .Select(a => a.Id)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Archives left Pending by a conversion that never finished: queued jobs are lost when the server
+    /// restarts. Each goes back to waiting, as Stale if it had a manifest before, so the sweep picks it
+    /// up. Only call this when no conversion is running. Returns how many were reset.
+    /// </summary>
+    public async Task<int> ResetInterruptedAsync(CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        var interrupted = await context.Set<Archive>()
+            .Where(a => a.ManifestStatus == ChunkManifestStatus.Pending)
+            .ToListAsync(cancellationToken);
+
+        foreach (var archive in interrupted)
+            archive.ManifestStatus = string.IsNullOrEmpty(archive.ManifestHash) ? ChunkManifestStatus.None : ChunkManifestStatus.Stale;
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        foreach (var archive in interrupted)
+            await cache.ExpireArchiveCacheAsync(archive.Id);
+
+        return interrupted.Count;
+    }
+
+    /// <summary>How many archives are in each state, and how much is left to convert.</summary>
+    public async Task<ChunkConversionProgress> GetProgressAsync(CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        var counts = await context.Set<Archive>()
+            .GroupBy(a => a.ManifestStatus)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        var remaining = await context.Set<Archive>()
+            .Where(a => a.ManifestStatus == ChunkManifestStatus.None || a.ManifestStatus == ChunkManifestStatus.Stale)
+            .SumAsync(a => a.UncompressedSize, cancellationToken);
+
+        var stored = await context.Set<Chunk>().SumAsync(c => c.StoredSize, cancellationToken);
+
+        return new ChunkConversionProgress(
+            counts.ToDictionary(c => c.Status, c => c.Count),
+            remaining,
+            stored);
+    }
+
     /// <summary>The archive's manifest, or null if it isn't converted.</summary>
     public async Task<ChunkManifest?> GetManifestAsync(Guid archiveId, CancellationToken cancellationToken = default)
     {
@@ -200,4 +262,21 @@ public sealed class ChunkManifestService(
     }
 
     private readonly record struct StoredChunkInfo(long Size, long StoredSize, ChunkCompression Compression);
+}
+
+/// <summary>The library's conversion to chunks at a moment.</summary>
+/// <param name="Counts">How many archives are in each state; a state with none is missing.</param>
+/// <param name="RemainingUncompressedSize">
+/// The uncompressed size of the archives still to convert: the most the chunk store can grow by
+/// converting them. Compression and chunks shared with archives already converted make it less.
+/// </param>
+/// <param name="StoredSize">What the chunk store holds now.</param>
+public sealed record ChunkConversionProgress(
+    IReadOnlyDictionary<ChunkManifestStatus, int> Counts,
+    long RemainingUncompressedSize,
+    long StoredSize)
+{
+    public int Count(ChunkManifestStatus status) => Counts.TryGetValue(status, out var count) ? count : 0;
+
+    public int Remaining => Count(ChunkManifestStatus.None) + Count(ChunkManifestStatus.Stale);
 }

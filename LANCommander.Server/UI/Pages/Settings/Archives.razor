@@ -1,8 +1,14 @@
 @page "/Settings/Archives"
 @using LANCommander.Server.Settings
 @using LANCommander.Server.Settings.Enums
+@using LANCommander.Server.Data.Enums
+@using LANCommander.Server.Services.Chunks
+@using LANCommander.Server.Jobs.Recurring
+@using Hangfire
 @using Microsoft.Extensions.Options
 @inject StorageLocationService StorageLocationService
+@inject ChunkManifestService ChunkManifestService
+@inject ChunkStore ChunkStore
 @inject IOptions<Settings> Settings
 @inject SettingsProvider<Settings> SettingsProvider
 @inject NotificationService Notifications
@@ -25,6 +31,44 @@
             <FormItem Label="Download Format" Help="Whether launchers may download converted archives as chunks. Zips are always still served, so older launchers and games that haven't been converted keep working.">
                 <EnumSelect TEnum="ChunkDownloadFormat" @bind-Value="Settings.Value.Server.Archives.DownloadFormat" />
             </FormItem>
+
+            @if (Settings.Value.Server.Archives.GenerateChunkManifests && _progress != null)
+            {
+                <FormItem Label="Chunk Conversion" Help="Archives waiting are converted a few at a time every 10 minutes, oldest first. Failed archives are left until rebuilt from their archive list.">
+                    <Flex Vertical Gap="Gap.Small">
+                        <Flex Gap="Gap.Small" Wrap>
+                            <Tag Small Success>@_progress.Count(ChunkManifestStatus.Ready) ready</Tag>
+                            <Tag Small>@_progress.Count(ChunkManifestStatus.None) not converted</Tag>
+                            <Tag Small Warning>@_progress.Count(ChunkManifestStatus.Stale) out of date</Tag>
+                            <Tag Small Info>@_progress.Count(ChunkManifestStatus.Pending) converting</Tag>
+                            <Tag Small Danger>@_progress.Count(ChunkManifestStatus.Failed) failed</Tag>
+                        </Flex>
+
+                        <span>
+                            The chunk store holds <ByteSize Value="_progress.StoredSize" />.
+                            Converting what's left needs at most <ByteSize Value="_progress.RemainingUncompressedSize" />, usually much less
+                            @if (_freeSpace.HasValue)
+                            {
+                                <text>; <ByteSize Value="_freeSpace.Value" /> is free on that drive.</text>
+                            }
+                            else
+                            {
+                                <text>.</text>
+                            }
+                        </span>
+
+                        @if (_freeSpace.HasValue && _progress.RemainingUncompressedSize > _freeSpace.Value)
+                        {
+                            <Alert Warning>The drive may run out of space before every archive is converted. Conversions that can't be written are marked Failed; the zips are never touched.</Alert>
+                        }
+
+                        <Flex Gap="Gap.Small">
+                            <Button Icon="IconType.SquaresFour" Disabled="_progress.Remaining == 0" OnClick="BuildAllNow">Build All Now</Button>
+                            <Button Text Icon="IconType.ArrowsClockwise" OnClick="LoadProgressAsync">Refresh</Button>
+                        </Flex>
+                    </Flex>
+                </FormItem>
+            }
 
             <FormItem Label="Max Upload Chunk Size (MB)">
                 <NumberInput @bind-Value="Settings.Value.Server.Archives.MaxChunkSize" Min="1" />
@@ -67,9 +111,46 @@
 
     string RootPath = Path.GetPathRoot(Directory.GetCurrentDirectory());
 
+    ChunkConversionProgress? _progress;
+    long? _freeSpace;
+
     protected override async Task OnInitializedAsync()
     {
         StorageLocations = (await StorageLocationService.GetAsync(l => l.Type == SDK.Enums.StorageLocationType.Archive)).ToList();
+
+        await LoadProgressAsync();
+    }
+
+    async Task LoadProgressAsync()
+    {
+        try
+        {
+            _progress = await ChunkManifestService.GetProgressAsync();
+        }
+        catch (Exception ex)
+        {
+            Notifications.Error(ex, "The chunk conversion progress could not be loaded");
+        }
+
+        try
+        {
+            var storageLocation = await ChunkStore.GetStorageLocationAsync();
+            var root = Path.GetPathRoot(Path.GetFullPath(SDK.AppPaths.ResolveStorageLocationPath(storageLocation.Path)));
+
+            _freeSpace = string.IsNullOrEmpty(root) ? null : new DriveInfo(root).AvailableFreeSpace;
+        }
+        catch (Exception)
+        {
+            // A network path or a drive that can't be asked: the estimate is shown without it
+            _freeSpace = null;
+        }
+    }
+
+    void BuildAllNow()
+    {
+        BackgroundJob.Enqueue<ChunkManifestSweep>(sweep => sweep.ConvertAsync(int.MaxValue));
+
+        Notifications.Info("Converting every archive that's waiting, one at a time, in the background. Refresh to follow its progress.");
     }
 
     async Task SaveAsync()

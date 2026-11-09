@@ -80,6 +80,16 @@ powershell -ExecutionPolicy Bypass -File .\Scripts\P2P\Start-TestServer.ps1 -Res
    Set the format back to **Archives only** and run it again: it should stop at once, saying the
    server offers archives only.
 
+## Converting without clicking
+
+With **Generate Chunk Manifests** on, uploads are converted automatically, and repacked or patched
+archives are marked *Out of date* and converted again. Everything else waiting (archives from before the
+setting, imports) is picked up by a sweep every 10 minutes, a few at a time.
+
+**Settings → Archives** shows the progress (ready, not converted, out of date, converting, failed), how
+much space the rest could take against what's free, and a **Build All Now** button that converts
+everything waiting one archive at a time. Use **Refresh** to follow it.
+
 ## What to look for
 
 - `data\level.pak` and `data\copy-of-level.pak` are identical, so their chunks are stored once.
